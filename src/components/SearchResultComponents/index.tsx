@@ -1,7 +1,7 @@
 import PopularCategory from '@components/HomePageComponent/PopularCategory';
 import Product from '@components/HomePageComponent/Product';
 import { fetchProducts } from '@utils/fetchProducts';
-import { useEffect, useState } from 'react';
+import { useEffect, useState , useRef} from 'react';
 import { useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 
@@ -89,6 +89,7 @@ export default function SearchResultsPage() {
   const queryParams = new URLSearchParams(location.search);
   const keyword = queryParams.get('keyword') || '';
   const categoryOption = queryParams.get('category') || 'ALL';
+  const requestIdRef = useRef(0);
 
   const [products, setProducts] = useState<ProductType[]>([]);
 
@@ -99,25 +100,34 @@ export default function SearchResultsPage() {
   const [totalPages, setTotalPages] = useState(0); // 총 페이지 수
   const PAGE_GROUP_SIZE = 5;
 
-  const SearchProducts = async (currentPage: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { products: newProducts, totalPages } = await fetchProducts({
-        page: currentPage - 1,
-        categoryOption,
-        keyword,
-      });
+const SearchProducts = async (currentPage: number) => {
+  const currentRequestId = ++requestIdRef.current; 
+  setLoading(true);
+  setError(null);
 
-      setLoading(false);
-      setTotalPages(totalPages); // 총 페이지 수 업데이트
-      return newProducts;
-    } catch (error) {
-      setLoading(false);
-      setError('불러오지 못했습니다.');
-      return [];
+  try {
+    const { products: newProducts, totalPages } = await fetchProducts({
+      page: currentPage - 1,
+      categoryOption,
+      keyword,
+    });
+
+    
+    if (currentRequestId === requestIdRef.current) {
+      setProducts(newProducts);
+      setTotalPages(totalPages);
     }
-  };
+  } catch (error) {
+    if (currentRequestId === requestIdRef.current) {
+      setError('불러오지 못했습니다.');
+      setProducts([]);
+    }
+  } finally {
+    if (currentRequestId === requestIdRef.current) {
+      setLoading(false);
+    }
+  }
+};
 
   useEffect(() => {
     const loadData = async () => {
