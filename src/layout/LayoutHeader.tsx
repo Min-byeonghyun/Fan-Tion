@@ -1,6 +1,6 @@
 import { membersApi } from '@api/member';
+import { getAccessToken, removeAccessToken } from '@utils/tokenStorage';
 import { useEffect, useState } from 'react';
-import { useCookies } from 'react-cookie';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import SearchIcon from '../icons/SearchIcon';
@@ -185,8 +185,7 @@ const MypageWrap = styled.div`
 `;
 
 export default function LayoutHeader() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
-  const [cookies, , removeCookie] = useCookies(['Authorization']);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [categoryOption, setCategoryOption] = useState('전체');
   const navigate = useNavigate();
@@ -207,13 +206,13 @@ export default function LayoutHeader() {
   const categories = Object.keys(categoryMappings);
 
   useEffect(() => {
-    setIsLoggedIn(!!cookies.Authorization);
-  }, [cookies]);
+    setIsLoggedIn(!!getAccessToken());
+  }, []);
 
   const handleLogout = async () => {
     try {
       await membersApi.signOut();
-      removeCookie('Authorization', { path: '/' });
+      removeAccessToken();
       setIsLoggedIn(false);
     } catch (error) {
       console.error('Logout 에러', error);

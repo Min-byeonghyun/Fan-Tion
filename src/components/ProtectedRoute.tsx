@@ -1,4 +1,4 @@
-import Cookies from 'js-cookie';
+import { getAccessToken } from '@utils/tokenStorage';
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 
@@ -7,11 +7,11 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const [isLoggedIn, setIsLoggedIn] = useState(!!Cookies.get('Authorization'));
+  const [isLoggedIn, setIsLoggedIn] = useState(!!getAccessToken());
 
   useEffect(() => {
-    setIsLoggedIn(!!Cookies.get('Authorization'));
-  }, [Cookies]);
+    setIsLoggedIn(!!getAccessToken());
+  }, []);
 
   //api 를 통해 로그인 상태를 확인하도록 수정할 부분
   if (isLoggedIn === false) {

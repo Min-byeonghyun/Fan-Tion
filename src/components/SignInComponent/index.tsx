@@ -1,9 +1,9 @@
 import NaverLoginButton from '@components/NaverComponent/NaverLoginButton';
 import React, { useState } from 'react';
-import { useCookies } from 'react-cookie';
 import { Link, useNavigate } from 'react-router-dom';
 import { membersApi } from '../../api/member';
 import { Styled } from '../../styled-components/AuthStyle';
+import { setAccessToken } from '@utils/tokenStorage';
 
 const errorMessages = {
   emptyFields: '이메일 또는 비밀번호가 올바르지 않습니다.',
@@ -11,7 +11,6 @@ const errorMessages = {
 
 export default function SignInForm() {
   const navigate = useNavigate();
-  const [, setCookie] = useCookies(['Authorization']);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -32,14 +31,9 @@ export default function SignInForm() {
     try {
       const response = await membersApi.signIn({ email, password });
 
-      const expires = new Date();
-      expires.setTime(expires.getTime() + 7200 * 1000); // 7200초 밀리초로 반환
-
       console.log(response);
-      setCookie('Authorization', response.data.accessToken, {
-        path: '/',
-        expires,
-      }); // 로그인 성공시 토큰 쿠키에 저장 하고 쿠키 시간 7200초 = 2시간
+      // 액세스 토큰을 인메모리에 저장 (리프레시 토큰은 httpOnly 쿠키로 서버에서 설정됨)
+      setAccessToken(response.data.accessToken);
 
       // 로그인 성공 처리
       navigate('/');

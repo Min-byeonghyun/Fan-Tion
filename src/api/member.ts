@@ -21,10 +21,18 @@ export interface PasswordResetResponse {
   uuid: string;
 }
 
+export interface RefreshTokenResponse {
+  data: {
+    accessToken: string;
+  };
+}
+
 export const membersApi = {
   signUp: (payload: any) => uploadMultipartData('/members/signup', payload),
   signIn: (payload: any): Promise<SignInResponse> =>
     axiosInstance.post('/members/signin', payload),
+  refresh: (): Promise<RefreshTokenResponse> =>
+    axiosInstance.post('/members/refresh'),
   requestPasswordReset: (payload: {
     email: string;
     phoneNumber: string;

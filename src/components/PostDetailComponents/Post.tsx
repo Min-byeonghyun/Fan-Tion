@@ -1,5 +1,5 @@
 import { communityApi } from '@api/community';
-import Cookies from 'js-cookie';
+import { getAccessToken } from '@utils/tokenStorage';
 import { jwtDecode } from 'jwt-decode';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -100,7 +100,7 @@ export default function Post() {
   const navigate = useNavigate();
   const [htmlContent, setHtmlContent] = useState<string>('');
   useEffect(() => {
-    const accessToken = Cookies.get('Authorization');
+    const accessToken = getAccessToken();
 
     if (accessToken) {
       try {

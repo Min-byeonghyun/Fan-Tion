@@ -1,5 +1,5 @@
-import axios, { AxiosError } from 'axios';
-import Cookies from 'js-cookie';
+import { getAccessToken, removeAccessToken, setAccessToken } from '@utils/tokenStorage';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -16,18 +16,38 @@ export const axiosInstance = axios.create({
   },
 });
 
+// 리프레시 토큰 요청 중인지 확인하는 플래그
+let isRefreshing = false;
+// 리프레시 토큰 요청 동안 대기 중인 요청들을 저장하는 배열
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: any) => void;
+}> = [];
+
+// 대기 중인 요청들을 처리하는 함수
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token!);
+    }
+  });
+  failedQueue = [];
+};
+
 // 요청 인터셉터 추가
 axiosInstance.interceptors.request.use(
-  config => {
+  (config: InternalAxiosRequestConfig) => {
     // 요청 헤더에 인증 토큰 추가
-    const token = Cookies.get('Authorization');
+    const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`; //요청 헤더에 토큰 추가
     }
     // console.log('Request Config:', config);
     return config;
   },
-  error => {
+  (error: any) => {
     // 요청 에러 처리
     return Promise.reject(error);
   },
@@ -35,17 +55,73 @@ axiosInstance.interceptors.request.use(
 
 // 응답 인터셉터 추가
 axiosInstance.interceptors.response.use(
-  response => {
+  (response: any) => {
     // 2xx 범위에 있는 상태 코드는 이 함수를 트리거 합니다.
     // 응답 데이터를 처리하고 반환
     return response.data;
   },
-  error => {
-    // 2xx 외의 범위에 있는 상태 코드는 이 함수를 트리거 합니다.
-    // 응답 에러 처리
-    const axiosError = error as AxiosError;
-    // 여기서 에러 처리 로직 구현
-    return Promise.reject(axiosError);
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
+
+    // 401 에러이고, 리프레시를 아직 시도하지 않은 요청인 경우
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // 이미 리프레시 중이면 큐에 추가
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(token => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return axiosInstance(originalRequest);
+          })
+          .catch(err => {
+            return Promise.reject(err);
+          });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // 리프레시 토큰 API 호출 (httpOnly 쿠키에 있는 리프레시 토큰 사용)
+        const response = await axios.post(
+          `${API_BASE_URL}/members/refresh`,
+          {},
+          {
+            withCredentials: true,
+          },
+        );
+
+        const newAccessToken = response.data.data?.accessToken;
+        if (newAccessToken) {
+          setAccessToken(newAccessToken);
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+          processQueue(null, newAccessToken);
+          isRefreshing = false;
+
+          // 원래 요청을 재시도
+          return axiosInstance(originalRequest);
+        } else {
+          throw new Error('액세스 토큰이 응답에 없습니다.');
+        }
+      } catch (refreshError) {
+        // 리프레시 실패 시 로그아웃 처리
+        processQueue(refreshError, null);
+        removeAccessToken();
+        isRefreshing = false;
+
+        // 로그인 페이지로 리다이렉트 (필요시)
+        // window.location.href = '/signin';
+
+        return Promise.reject(refreshError);
+      }
+    }
+
+    // 401 에러가 아니거나 리프레시를 이미 시도한 경우 그대로 에러 반환
+    return Promise.reject(error);
   },
 );
 

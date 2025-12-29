@@ -1,12 +1,11 @@
 import { naverLoginApi } from '@api/naverLogin';
+import { setAccessToken } from '@utils/tokenStorage';
 import { useEffect } from 'react';
-import { useCookies } from 'react-cookie';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function NaverLoginCallback() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [, setCookie] = useCookies(['Authorization']);
 
   useEffect(() => {
     const handleNaverSignin = async () => {
@@ -24,13 +23,8 @@ export default function NaverLoginCallback() {
         console.log('API 응답:', response);
 
         const accessToken = response.data.accessToken;
-        const expires = new Date();
-        expires.setTime(expires.getTime() + 7200 * 1000); // 2시간 후 만료
-
-        setCookie('Authorization', accessToken, {
-          path: '/',
-          expires,
-        });
+        // 액세스 토큰을 인메모리에 저장 (리프레시 토큰은 httpOnly 쿠키로 서버에서 설정됨)
+        setAccessToken(accessToken);
 
         console.log('로그인 성공, 홈으로 이동');
         navigate('/');
@@ -41,7 +35,7 @@ export default function NaverLoginCallback() {
     };
 
     handleNaverSignin();
-  }, [navigate, location.search, setCookie]);
+  }, [navigate, location.search]);
 
   return null;
 }

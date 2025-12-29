@@ -1,5 +1,5 @@
 import { EventSourcePolyfill } from 'event-source-polyfill';
-import Cookies from 'js-cookie';
+import { getAccessToken } from '@utils/tokenStorage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 
@@ -53,12 +53,13 @@ interface BidingHistoryType {
 export default function BidingHistory({ auctionId }: BidingHistoryType) {
   const [biddingHistory, setBiddingHistory] = useState<BidType[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
-  const token = Cookies.get('Authorization');
 
   const startEventSource = useCallback(() => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
+
+    const token = getAccessToken();
 
     const eventSource = new EventSourcePolyfill(
       `${import.meta.env.VITE_API_BASE_URL}/bid/${auctionId}`,

@@ -1,5 +1,5 @@
 import { membersApi } from '@api/member';
-import { useCookies } from 'react-cookie';
+import { removeAccessToken } from '@utils/tokenStorage';
 import styled from 'styled-components';
 
 const WithdrawalButton = styled.button`
@@ -21,8 +21,6 @@ const WithdrawalButton = styled.button`
   }
 `;
 export function Withdrawal() {
-  const [, , removeCookie] = useCookies(['Authorization']);
-
   const handleWithdrawal = async () => {
     const confirmOk = confirm('회원 탈퇴를 하시겠습니까?');
 
@@ -30,7 +28,7 @@ export function Withdrawal() {
       try {
         const response = await membersApi.withdrawal();
         if (response.success) {
-          removeCookie('Authorization', { path: '/' });
+          removeAccessToken();
           alert('회원 탈퇴가 완료되었습니다.');
         }
       } catch (error) {

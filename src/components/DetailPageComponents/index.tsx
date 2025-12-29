@@ -4,7 +4,7 @@ import LoadingScreen from '@components/LoadingScreen';
 import { useModalHandler } from '@hooks/useModalHandler';
 import { auctionDetailsType } from '@mocks/db';
 import { fetchAuctionDetails } from '@utils/fetchAuctionDetails';
-import Cookies from 'js-cookie';
+import { getAccessToken } from '@utils/tokenStorage';
 import { jwtDecode } from 'jwt-decode';
 import _ from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
@@ -155,7 +155,7 @@ export default function DetailPageComponents() {
   const [renderTrigger, setRenderTrigger] = useState(false);
   const { isModalOpen, toggleModal } = useModalHandler(false);
   const { auctionId } = useParams<{ auctionId: string }>();
-  const isLoggedIn = !!Cookies.get('Authorization');
+  const isLoggedIn = !!getAccessToken();
   const navigate = useNavigate();
   const [nickname, setNickname] = useState('');
 
@@ -166,7 +166,7 @@ export default function DetailPageComponents() {
   }, [auctionId, renderTrigger]);
 
   useEffect(() => {
-    const accessToken = Cookies.get('Authorization');
+    const accessToken = getAccessToken();
 
     if (accessToken) {
       try {
